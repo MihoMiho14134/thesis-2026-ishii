@@ -1,0 +1,324 @@
+\chapter{滞在比較システム}
+\thispagestyle{myheadings}
+
+%目標10〜20ページ程度まで増やす
+\section{歩行軌跡取得APIサーバ}
+
+\subsection{APIサーバの設計と構築}
+歩行情報蓄積基盤にある歩行軌跡を取得するAPIを作成した．
+
+APIサーバを構築する上で採用した技術を述べる，まず，使用言語としてGo言語を採用した．これは処理速度が早い言語を選択する必要があるためである．Go言語は？？の言語でありREST APIのフレームワークがある．[Goに対抗する言語]と異なり，？？ができる利点がある．フレームワークは[ginの説明]であるginを採用した．データベースは[postgresの説明]であるpostgresを採用した．これは，[postgresを採用した理由]のためである．
+
+また，APIサーバの必要条件として，拡張性の高いモデル設計，大容量の歩行軌跡データの受信に耐えられる設計がある．
+
+\subsubsection{モデル定義}
+本本稿では，各モデルをGoの型定義により定義する．
+
+\begin{table}[htb]
+\centering
+\caption{モデルの型定義}
+\label{tab:model_type}
+\begin{tabular}{|c|c|c|} \hline
+   プロパティ & 型& 説明 \\ \hline \hline
+   floorMapImage & string & フロアマップ画像の署名つきURL\\  \hline
+   estimationTrajectories & EstimationTrajectories& 推定軌跡モデルを参照(表\ref{tab:model_type_estimationTrajectories})\\ \hline
+   correctTrajectories & CorrectTrajectories & 正解軌跡モデルを参照(表\ref{tab:model_type_CorrectTrajectories})\\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[htb]
+\centering
+\caption{EstimationTrajectoriesの型定義}
+\label{tab:model_type_estimationTrajectories}
+\begin{tabular}{|c|c|c|} \hline
+   プロパティ & 型& 説明 \\ \hline \hline
+   estimationTrajectoriesID & string & 推定軌跡ID\\  \hline
+   estimationPosition & EstimationPosition & 推定座標モデルを参照(表\ref{tab:model_type_EstimationPosition})\\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[htb]
+\centering
+\caption{EstimationPositionモデルの型定義}
+\label{tab:model_type_EstimationPosition}
+\begin{tabular}{|c|c|c|} \hline
+   プロパティ & 型& 説明 \\\hline\hline
+   id & string & 座標ID\\ \hline
+   x & int & x座標\\ \hline
+   y & int & y座標\\ \hline
+   walkedAt & string & 座標の取得時間\\\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[htb]
+\centering
+\caption{CorrectTrajectoriesモデルの型定義}
+\label{tab:model_type_CorrectTrajectories}
+\begin{tabular}{|c|c|c|} \hline
+   プロパティ & 型& 説明 \\ \hline \hline
+   correctTrajectoriesID & string & 正解軌跡ID\\  \hline
+   correctPosition & CorrectPosition & 正解座標モデルを参照(表\ref{tab:model_type_CorrectnPosition})\\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[htb]
+\centering
+\caption{CorrectPositionモデルの型定義(正解座標)}
+\label{tab:model_type_CorrectnPosition}
+\begin{tabular}{|c|c|c|} \hline
+   プロパティ & 型& 説明 \\ \hline \hline
+   id & string & 座標ID\\  \hline
+   x & int & x座標\\ \hline
+   y & int & y座標\\ \hline
+   walkedAt & string & 座標の取得時間\\ \hline
+\end{tabular}
+\end{table}
+
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=\linewidth]{img/json_es_tj.png}
+    \caption{推定軌跡json(仮)}
+    \label{fig:json_es_tj}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=\linewidth]{img/json_cr_tj.png}
+    \caption{正解軌跡json(仮)}
+    \label{fig:json_cr_tj}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=\linewidth]{img/ER_trajectory.png}
+    \caption{ER図}
+    \label{fig:ER_trajectory}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=\linewidth]{img/sequence_diagram.png}
+    \caption{シーケンス図:歩行軌跡取得API}
+    \label{fig:sequence_diagram}
+\end{figure}
+
+
+
+
+\section{システム概要}
+提案システムは歩行情報蓄積サーバと滞在比較システムから構成される．本研究の流れを説明する(図\ref{fig:system_flow})．まず，歩行情報蓄積DBから施策前後の歩行軌跡を抽出する．次に，歩行軌跡から滞在箇所の抽出をする．その後，施設内の滞在回数を集計し，滞在ヒートマップで可視化する．最後に，施設前後に滞在ヒートマップを比較し，滞在回数の変化量を差分ヒートマップで可視化する．
+
+\clearpage
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/system_flow_ver1.png}
+    \caption{滞在比較システムのシステムの流れ}
+    \label{fig:system_flow}
+\end{figure}
+
+
+使用言語にはPythonを採用した．Pythonを使用した理由は，PandasやNumPyなどのデータ分析用ライブラリや，Matplotlibなどの可視化ライブラリが充実しており，本研究で扱う時系列データの処理やヒートマップの描画に適しているためである．
+
+
+\section{歩行軌跡の抽出}
+歩行情報蓄積DBから施策前後の歩行軌跡を抽出する．施策前と施策後の歩行軌跡を分けて滞在比較システムの専用フォルダに格納する．歩行軌跡のデータ形式は，時刻，x座標，y座標である．時刻は0.25sごとに取得する．[0.25秒にした理由]．表\ref{tab:walking_trajectory_csv}に例を示す．
+
+
+
+%% 具体例，理由，手順
+%% 採用しなかった技術選定やアルゴリズム．
+
+\begin{table}[htb]
+ \centering
+   \caption{歩行軌跡データのcsvファイル}
+   \label{tab:walking_trajectory_csv}
+\begin{tabular}{|c|c|c|} \hline
+   時刻(s) & x座標(m) & y座標(m) \\ \hline
+   0.25 & 6.91 & 28.70\\  \hline
+   0.50 & 6.91 & 28.62\\ \hline
+   0.75 & 6.99 & 28.55\\ \hline
+   1.00 & 6.99 & 28.55\\ \hline
+   1.25 & 6.99 & 28.55\\ \hline
+\end{tabular}
+\end{table}
+
+
+\section{滞在箇所の抽出}
+本研究では，歩行軌跡データを用いて滞在箇所の抽出を行う．歩行軌跡のデータ形式は時系列順に並んだ点列として定義される，各データ点は時刻 $t$，x座標 $x$，y座標 $y$ の情報を持つ．
+データ点 $P_i$ ($i = 1, 2, \dots, N$) における時刻を $t_i$，座標を $(x_i, y_i)$ とするとき，時刻 $t_i$ における瞬時歩行速度 $v_i$ は，直前の計測点 $P_{i-1}$ からの移動距離を経過時間で除算することで算出される．具体的には以下の式(\ref{eq:velocity})を用いて定義する．式において，分子は隣接する座標間のユークリッド距離，分母はデータのサンプリング間隔を表す．
+
+\begin{equation}
+\label{eq:velocity}
+v_i = \frac{\sqrt{(x_i - x_{i-1})^2 + (y_i - y_{i-1})^2}}{t_i - t_{i-1}}
+\end{equation}
+
+他の歩行速度の算出方法としてドップラーシフトを用いた推定が挙げられる．ドップラーシフトを用いた手法は高精度な算出が可能であるという利点を持つが，専用のインフラ設備が必要であり導入コストが高いという欠点がある．そのため，実装が容易かつ計算コストが低く，大量のデータ処理に適しているという観点から，本研究では式(\ref{eq:velocity})に示した座標の時間差分による算出方法を採用した．
+
+算出した歩行速度が閾値以下の場合，その地点を滞在と判定する(図\ref{fig:waking_speed_stay})．一般的に，人が自由に歩いた場合の歩行速度は1.0〜1.9\text{m/s}である．したがって，歩行速度が1.0\text{m/s}未満であれば立ち止まりを検出できる．しかし，本研究で用いるPDR（歩行者自律航法）やパーティクルフィルタによる位置推定には，一定の測位誤差が含まれる．誤差により静止状態であっても微小な速度が算出される課題がある．そこで，本研究では時系列データに対して移動平均フィルタを適用し，ノイズを低減させた．移動平均フィルタ適用後の速度分布を考慮し，本研究では滞在判定の閾値を0.5\text{m/s}以下に設定した．滞在判定つき歩行軌跡のデータの例を表\ref{tab:stay_waking_trajectory}に示す．
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/waking_speed_stay.png}
+    \caption{滞在箇所の抽出}
+    \label{fig:waking_speed_stay}
+\end{figure}
+
+\begin{table}[htb]
+\centering
+\caption{滞在判定つき歩行軌跡のcsvファイル}
+\label{tab:stay_waking_trajectory}
+\begin{tabular}{|c|c|c|c|c|} \hline
+   時刻(s) & x座標(m) & y座標(m) & 速度(m/s) & 滞在判定 \\ \hline
+   0.25 & 6.91 & 28.70 &  - & FALSE \\ \hline
+   0.50 & 6.91 & 28.62 & 0.32 & TRUE \\ \hline
+   0.75 & 6.99 & 28.55 & 0.42 & TRUE \\ \hline
+   1.00 & 6.99 & 28.55 & 0.00 & FALSE \\ \hline
+   1.25 & 6.99 & 28.55 & 0.00 & FALSE \\ \hline
+\end{tabular}
+\end{table}
+
+\section{滞在ヒートマップ}
+滞在ヒートマップは，各グリッドセルの滞在回数の合計をヒートマップで可視化する．各グリッドセルの滞在回数を可視化する手法として，ヒートマップを採用した．他の可視化手法として，個々の滞在時点を点で描画する散布図がある．本研究では，施設内での利用者の密集箇所を視覚的かつ直感的に把握したいためヒートマップを採用した．ヒートマップで可視化する指標に滞在回数を採用した．他の指標として滞在時間がある．本研究では，立ち止まり行動の頻度を把握するため，指標に滞在回数を採用した．滞在ヒートマップの実装の流れを説明する．
+
+\subsection{グリッド分割}
+まず，フロアマップを実寸法1m$\times$1mのグリッドセルに分割する(図\ref{fig:gridFloorMap})．グリッドセルのサイズを1\text{m}$\times$1\text{m}にした理由は，人の平均的な歩幅は0.7\text{m}であり，人間が特定の対象物に対して立ち止まり動作を行う範囲を捉えるのに適したサイズであるためである．次に，グリッドセル数を計算する．フロアマップの寸法とグリッドサイズから横方向と縦方向のグリッドをいくつ作成するか計算する．フロアマップ画像のピクセルサイズは幅が2837pxで，高さ3742pxである．フロアマップの幅を$W$，フロアマップの高さは$H$とする．グリッドサイズを$S$とする．横方向のグリッド数を$G_x$，縦方向のグリッド数を $G_y$とする．
+\begin{itemize}
+    \item 横方向のグリッド数： $G_x =  W / S $
+    \item 縦方向のグリッド数： $G_y =  H / S $
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/gridFloorMap.png}
+    \caption{フロアマップをグリッドセルに分割}
+    \label{fig:gridFloorMap}
+\end{figure}
+
+
+\subsection{歩行軌跡の座標変換と描画}
+歩行軌跡をフロアマップに描画するため，座標変換を行う．利用者の歩行軌跡データは，相対座標系($x_{local}$，$y_{local}$)で表現されているため，これをフロアマップ上の絶対座標系($x_{global}$，$y_{global}$)に変換する必要がある．本システムでは，歩行軌跡に座標変換パラメータと初期位置のグリッドセル情報を追加し，相対座標を絶対座標に変換する．この座標変換は以下の３つの操作で構成される．
+
+\begin{enumerate}
+    \item \textbf{拡大・縮小}：実空間上の移動距離とマップ上のピクセル距離の比率を補正する．
+    \item \textbf{回転}：歩行軌跡の進行方向をフロアマップの方位に合わせる．
+    \item \textbf{平行移動}：軌跡の開始点をフロアマップ上の初期位置に合わせる．
+\end{enumerate}
+
+まず，スケーリングについて述べる．補正係数$S$は，実測による移動距離(絶対距離)とセンサ等から算出された相対距離の比率を用いて算出する．例えば，基準となる距離\text{100px}に対する補正を行う場合，縮尺後のスケールは以下の関係式で求められる．
+
+\begin{equation}
+    S= \frac{\text{マップ上の距離 [px]}}{\text{実測距離 [m]}}
+\end{equation}
+
+次に，回転及び，平行移動を行う，回転角を$\theta$，平行移動量を($x_{offset}$，$y_{offset}$)とする．まず，原点を中心とした回転座標($x'$，$y'$)を式\ref{eq:rotation}を用いて算出する．
+
+\begin{equation}
+    \label{eq:rotation}
+    \begin{cases}
+        x'=x_{local} \cos\theta - y_{local} \sin\theta\\y' = x_{local} \sin\theta + y_{local} \cos\theta
+    \end{cases}
+\end{equation}
+
+続いて，軌跡の開始点$(0，0)$をフロアマップ上の初期位置に対応させるため，式\ref{eq:translation}を用いて平行移動を行う．これにより，最終的な絶対座標が得られる．
+
+\begin{equation} 
+    \label{eq:translation} 
+    \begin{cases} 
+    x_{global} = x' + x_{offset}\\y_{global} = y' + y_{offset}
+    \end{cases} 
+\end{equation}
+
+本実験における実装では，システム上のパラメータとして．以下の値を設定した．
+\begin{itemize}
+    \item スケール ($S$): $1.0$
+    \item 回転角 ($\theta$): $0.0 \text{　rad}$
+    \item 初期位置 $(x_{offset}， y_{offset})$: $(6， 28)$
+\end{itemize}
+%% 図
+
+
+\subsection{滞在回数の集計}
+個々の歩行軌跡からグリッドごとの滞在回数を算出し，最終的に複数の歩行軌跡を統合して，フロアマップ全体の滞在分布を作成する．
+まず，単一の歩行軌跡の滞在箇所がどのグリッドセルに属するのか特定を行う．対象となる歩行軌跡データは表\ref{tab:stay_waking_trajectory}で示した滞在と判定つき歩行軌跡の($x,y$)座標である．グリッドサイズ$L$[px]を用いて式\ref{eq:grid_calc}により，グリッドID$(col,row)$を算出する．
+
+\begin{equation}
+    col = \lfloor x / L \rfloor, \quad row = \lfloor y / L \rfloor
+    \label{eq:grid_calc}
+\end{equation}
+
+次に，算出グリッドセルごとの滞在回数を集計する．ここで，同一グリッドセル内に連続して留まり続けるデータ点は，１回の滞在と扱う必要がある．そのため，時系列順に並んだデータにおいて，現在のグリッドID$(col，row)$と直前のグリッドIDを比較し，IDが変化した時点のみを抽出する処理を行う．IDが変化した時点とは，グリッドを移動または，新たな滞在が開始された時点を指す．最終的にIDが変化した時点をグリッドIDごとに集計し，各グリッドへの滞在回数とする．データ構造は，各グリッドセルIDをキーとし，滞在回数を値とする辞書となる．各グリッドの滞在回数の集計結果の例を表\ref{tab:grid_stay_counts}に示す．
+
+\begin{table}[H]
+  \centering
+  \caption{各グリッドの滞在回数の集計結果}
+  \label{tab:grid_stay_counts}
+  \begin{tabular}{|c|c|} \hline
+    グリッドID & 滞在回数 \\ \hline 
+    $(6, 28)$ & 1 \\ \hline
+    $(7, 28)$ & 1 \\ \hline
+    $(9, 15)$ & 1 \\ \hline
+    $(9, 17)$ & 1 \\ \hline
+  \end{tabular}
+\end{table}
+
+そして，フロアマップ全体の滞在分布の作成を行う．各軌跡から得られた滞在回数データを，対象エリア全体を表す２次元配列(サイズ$H \times W$)に加算する．この際，センサの誤差や計算上のミスで変な座標が入力される可能性があるため，配列の定義域内($0 \le row < H$ かつ $0 \le col < W$)にある有効なグリッド座標のみを累積加算とする．有効と判定された座標に対する配列要素に滞在回数を加算し，不正の混入を防ぎ，信頼性の高い滞在分布データを作成する．
+
+\subsection{フロアにおける滞在回数の可視化}
+最後に，滞在回数の値が大きいセルほど赤色になるよう色付けを行い，フロアマップ上にヒートマップとして描画する．
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/heatmap_A.png}
+    \caption{滞在ヒートマップ}
+    \label{fig:heatmap_A}
+\end{figure}
+
+\section{差分ヒートマップ}
+施策前後の滞在ヒートマップを比較し，施設内の利用状況の変化を直感的に把握するために差分ヒートマップを作成する(図\ref{fig:differential_heatmap})．他の比較手法として，特定の棚やエリアを関心領域として設定し，その領域内の統計量を比較するROI分析が挙げられる．ROI分析は領域内での滞在統計量を数値で比較できる利点がある．本研究では，施設内の利用状況の変化を直感的に把握したいため，差分ヒートマップを採用した．
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/differential_heatmap.png}
+    \caption{差分ヒートマップ}
+    \label{fig:differential_heatmap}
+\end{figure}
+
+差分ヒートマップの実装の流れを説明する．まず，比較したい2つの条件の滞在回数のデータを用意する．本研究では，条件を通常と施策中と定義した．理由は，施策による変化量を可視化し，施策による滞在回数の変化量を把握するためである．具体的には，条件Aの通常の滞在回数を格納した2次元配列と条件Bの施策中の滞在回数を格納した２次元配列である．例を表\ref{tab:heatmap_A},表\ref{tab:heatmap_B}に示す．
+
+各グリッドセル $G_{i，j}$ における滞在回数の変化量 $\Delta C_{i，j}$ は，通常の総滞在回数を$C_{i，j}$，施策中の総滞在回数を$C'_{i，j}$と定義し，式\ref{eq:diff_heatmap}で算出する．差分データの例を表\ref{tab:diff_data_example}で示す．
+
+\begin{equation}
+\label{eq:diff_heatmap}
+\Delta C_{i,j} = C'_{i,j} - C_{i,j}
+\end{equation}
+
+\begin{itemize}
+    \item $C_{i，j}$ : 通常のグリッド $G_{i，j}$ における総滞在回数
+    \item $C'_{i，j}$ : 施策中のグリッド $G_{i，j}$ における総滞在回数
+\end{itemize}
+
+
+%TODO:具体的なデータに変更
+\begin{table}[H]
+  \centering
+  \caption{差分データ（$\Delta C_{i,j}$）の算出例．\textbf{TODO：具体的なデータに修正}}
+  \label{tab:diff_data_example}
+  \begin{tabular}{lcccc} \hline
+    グリッド座標 & 施策前 $C_{i,j}$ & 施策後 $C'_{i,j}$ & 変化量 $\Delta C_{i,j}$ & データの意味 \\\hline \hline
+    $(10, 10)$ & 15 & 25 & \textbf{+10} & 増加（赤色） \\
+    $(20, 30)$ & 40 & 10 & \textbf{-30} & 減少（青色） \\
+    $(50, 50)$ & 5 & 5 & \textbf{0} & 変化なし（無色） \\ \hline
+  \end{tabular}
+\end{table}
+
+滞在回数の変化量を可視化するにあたり，変化の度合いを公平にするため，正規化を行う．変化量$\Delta C_{i,j}$の絶対値を基準として，正負が対称となるよう正規化を行った．これにより，変化量が0の地点を無色(白)，正の値を赤色，負の値を青色のグラデーションで表現する．
+
+また，作成した差分ヒートマップは，施設内の位置関係を明確にするため，フロアマップ画像上に透過度を設定して重ね合わせて描画する．これにより，$\Delta C_{i，j}$ の値が正であれば滞在回数が増加(赤)，負であれば滞在回数が減少(青)
+を示す．滞在回数の変化が施設内のどの位置で生じたかというレイアウト変更等の施策が滞在行動に与えた影響の直感的な把握が可能になる．
+
+% Local Variables: 
+% mode: japanese-LaTeX
+% TeX-master: "root"
+% End: 

@@ -1,0 +1,56 @@
+\chapter{評価実験}
+\thispagestyle{myheadings}
+
+\section{実験設定}
+本研究で提案する滞在比較システムが，屋内施設の滞在状況の変化を可視化できるかを検証をする実験を行った．
+ 
+実験場所は大学研究室内の1フロアを対象とし，施策として「机の上への菓子を配置」を実施した．比較対象として，以下の２つの条件を設定した．
+\begin{itemize}
+\item 条件A（施策前）：通常時の移動データ
+\item 条件B（施策後）：菓子を配置した場合の移動データ
+\end{itemize}
+実験には，Webアプリケーションを用いて作成した歩行軌跡データを使用する．各条件につき40本の軌跡，計80本を用意した．
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[height=200mm]{img/A.png}
+    \caption{条件A}
+    \label{fig:imageA}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[height=200mm]{img/B.png}
+    \caption{条件B}
+    \label{fig:imageB}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[height=250mm]{img/web_app_waking_trajectory.png}
+    \caption{歩行軌跡の作成をするwebアプリ}
+    \label{fig:web_app_waking_trajectory}
+\end{figure}
+
+
+
+\section{実行結果}
+図?に施策前後の滞在ヒートマップおよびその変化を示す差分ヒートマップを示す．実験の結果，菓子を配置したエリア周辺の滞在回数が増加したと確認できる．差分ヒートマップでは，菓子配置箇所のグリッドセルが赤く表示されており，利用者の関心が特定箇所に集中した直感的に把握できる結果となった．
+
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=\linewidth]{img/result_v1.png}
+    \caption{実験結果}
+    \label{fig:3}
+\end{figure}
+
+
+\section{考察}
+理由として，菓子という対象物への関心が歩行者の滞在行動を促進させたと考えられる．以上の結果から，本研究は屋内施設における滞在状況の変化を可視化する手法として有用であるといえる．
+
+
+% Local Variables: 
+% mode: japanese-LaTeX
+% TeX-master: "root"
+% End: 
